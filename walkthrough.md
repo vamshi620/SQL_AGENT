@@ -167,15 +167,4 @@ User types: /new-pipeline (or @e2e-orchestrator I need to build [feature])
 → Prints the completion message!
 ```
 
-## Database Named Instances & Windows Auth Fixes
-
-We have resolved issues connecting to SQL Server named instances (such as `localhost\SQLEXPRESS`) and using Windows Integrated Authentication:
-
-1. **Named Instance Parsing**: The server-side configuration now automatically checks if the `DB_SERVER` environment variable contains a backslash (`\`). If it does, it splits it into a hostname (e.g., `localhost`) and an instance name (e.g., `SQLEXPRESS`), mapping the latter to `connectionConfig.options.instanceName`.
-2. **Dynamic Port Allocation**: In SQL Server, named instances use dynamic port allocation resolved via the SQL Server Browser service. The MCP server now omits the `port` connection option if `DB_PORT` is not explicitly set in the `.env` file. This lets the SQL Server Browser resolve the correct dynamic port.
-3. **Strict Type Safety**: Made the `port` configuration option optional (`port?: number`) in the TypeScript interfaces to prevent compiler warnings during builds under strict mode.
-4. **Dynamic Driver Loader**: Standardized on uniform config structures across the `tedious` driver (SQL Authentication) and `msnodesqlv8` driver (Windows Authentication).
-5. **Direct Localhost Connection**: If `DB_SERVER` resolves to `localhost` or `127.0.0.1` and no named instance suffix is explicitly specified, the configuration completely bypasses the port and instance name assignments. This ensures the client connects directly and cleanly to the default SQL Server instance running locally.
-6. **Dynamic ODBC Connection String Builder**: When `DB_TRUSTED_CONNECTION=true` is used, the connection logic now dynamically compiles a custom ODBC connection string. This overrides the hardcoded legacy driver (Native Client 11.0) and uses the modern installed ODBC driver (defaulting to `ODBC Driver 17 for SQL Server`, overrideable via `DB_ODBC_DRIVER` in `.env`). This resolves the `[Microsoft][ODBC Driver Manager] Data source name not found` error when the legacy client is missing.
-7. **SQL Keyword Escaping (`rowCount`)**: Resolved a SQL syntax error (`Incorrect syntax near the keyword 'rowCount'`) in [db-schema.ts](file:///c:/VAMSHI/E2Eagent/mcp-server/src/tools/db-schema.ts) when retrieving approximate row counts. This was fixed by escaping the reserved T-SQL keyword `rowCount` as `[rowCount]` in the SQL schema query, which is then mapped correctly back to the TypeScript output.
 
