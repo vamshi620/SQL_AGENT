@@ -11,7 +11,6 @@ tools:
   - read_file
   - write_file
   - list_files
-model: gpt-4o
 skills:
   - schema-analysis
   - docx-document-writer

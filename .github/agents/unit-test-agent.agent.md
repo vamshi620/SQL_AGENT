@@ -14,7 +14,6 @@ tools:
   - read_file
   - write_file
   - list_files
-model: gpt-4o
 handoffs:
   - label: "✅ Done — Report to Orchestrator (Complete Pipeline)"
     agent: e2e-orchestrator

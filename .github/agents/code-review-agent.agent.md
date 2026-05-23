@@ -12,7 +12,6 @@ tools:
   - read_file
   - write_file
   - list_files
-model: gpt-4o
 skills:
   - sql-tsql-standards
   - schema-analysis
