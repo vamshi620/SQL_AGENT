@@ -1,0 +1,14 @@
+# Generated output files (Word documents, test reports, memory, SQL scripts)
+workspace/
+
+# Environment variables (contains DB credentials)
+.env
+
+# Node.js
+node_modules/
+mcp-server/dist/
+npm-debug.log*
+
+# VS Code (keep mcp.json and extensions.json, ignore personal settings)
+.vscode/settings.json
+.vscode/launch.json
