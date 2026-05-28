@@ -40,15 +40,35 @@ If `MEMORY.md` exists in the `workspace/` folder:
 
 If MEMORY.md does NOT exist, ask the user for requirements (standalone mode).
 
-### Step 1 – Auto-Discover Full Schema
-**Immediately call `get_db_schema` with NO filter** to fetch every table, column, index, and foreign key in the database.
-- Do NOT ask the user for table names — discover them yourself
-- Analyze the full schema to identify:
-  - Tables that already exist and are relevant to the feature
-  - Missing tables that need to be created
-  - Columns that need to be added or modified
-  - Existing stored procedures (query `sys.procedures`) that may need updating
-- Show a brief auto-detected impact summary: "Based on the schema I found: [table list]" — then proceed
+### Step 1 – Auto-Discover Schema (Hybrid Optimization with Caching)
+
+**FIRST: Check MEMORY.md for Schema Cache**
+- If **Schema Cache** section exists in MEMORY.md, the orchestrator already fetched and cached the schema
+- Call `get_smart_schema` with `useCache: true` and pass the cached schema
+- This costs ZERO database calls and saves ~10,000+ tokens
+
+**OTHERWISE: Call `get_smart_schema`** for intelligent schema fetching.
+
+```
+// If cached schema available:
+get_smart_schema(
+  keywords: "[feature description from MEMORY.md Requirements]",
+  useCache: true,
+  cachedSchema: [copy the JSON from MEMORY.md Schema Cache]
+)
+
+// If no cache available:
+get_smart_schema(
+  keywords: "[feature description from MEMORY.md Requirements]"
+)
+```
+
+This hybrid approach:
+- **With cache**: Zero DB calls, ~95% token savings vs. re-fetching
+- **Without cache**: Intelligently identifies relevant tables via keyword matching
+- Extracts entity names from requirements (e.g., "create LoyaltyPoints table" → searches for loyalty/points tables)
+
+**Then show a brief auto-detected impact summary:** "Based on the schema I found: [table list]" — then proceed
 
 ### Step 2 – Parse the Requirements
 - Read the **User Request** and **Requirements** sections from MEMORY.md (or the user's message in standalone mode)

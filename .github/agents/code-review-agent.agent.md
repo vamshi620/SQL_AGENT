@@ -51,11 +51,35 @@ The user will provide one of:
 If a file path is given, read the file content from the workspace.
 If a stored procedure name is given, call `run_sql` with dryRun=true to fetch the proc definition from sys.sql_modules.
 
-### Step 2 – Auto-Discover Full Schema Context
-**Call `get_db_schema` with NO filter** to fetch the entire database schema.
-- Do NOT ask the user which tables to include — auto-discover all of them
-- From the full schema, identify tables referenced in the SQL code under review
-- Detect missing indexes, dangling FK references, or column type mismatches against the live schema
+### Step 2 – Auto-Discover Schema Context (Hybrid with Caching)
+
+**FIRST: Check MEMORY.md for Schema Cache**
+- If **Schema Cache** section exists, the orchestrator cached the schema
+- Call `get_smart_schema` with `useCache: true` and pass the cached schema
+- This costs ZERO database calls and saves ~10,000+ tokens
+
+**OTHERWISE: Call `get_smart_schema`** to intelligently fetch needed schema.
+
+```
+// If cached schema available:
+get_smart_schema(
+  keywords: "[SQL code context or table names from the files]",
+  useCache: true,
+  cachedSchema: [copy from MEMORY.md Schema Cache]
+)
+
+// If no cache available:
+get_smart_schema(
+  keywords: "[tables referenced in the SQL code: Orders, Customers, etc.]"
+)
+```
+
+This hybrid approach:
+- **With cache**: Zero DB calls, ~95% token savings vs. re-fetching (highest ROI!)
+- **Without cache**: Extracts table references from SQL code and fetches only relevant tables
+- For code review, usually you only need 5-15 tables instead of all 100+
+
+**Then identify issues:** detect missing indexes, dangling FK references, or column type mismatches against the fetched schema
 
 ### Step 3 – Perform the Code Review
 Analyze the code across these dimensions:

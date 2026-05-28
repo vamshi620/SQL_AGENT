@@ -40,11 +40,27 @@ If `MEMORY.md` exists in the `workspace/` folder:
 
 If MEMORY.md does NOT exist, proceed normally (standalone mode).
 
-### Step 1 – Auto-Discover Full Schema
-**Immediately call `get_db_schema` with NO filter** to fetch every table in the database.
-- Do NOT ask the user for table names — discover them yourself
-- From the full schema, identify which tables are relevant to the user's request by matching entity names, column names, and relationships
-- Present a brief auto-detected list: "I found these related tables: [list]" — then proceed without waiting for confirmation
+### Step 1 – Auto-Discover Schema (Hybrid Optimization)
+
+**RECOMMENDED: Call `get_smart_schema`** for intelligent, automatic schema fetching optimized for token usage.
+
+```
+get_smart_schema(
+  keywords: "[user's feature description from Step 0 or the chat]"
+)
+```
+
+This hybrid approach automatically:
+- Extracts keywords from your description (e.g., "loyalty points" → ["loyalty", "points"])
+- For large databases (>100 tables): Identifies relevant tables via keyword matching
+- For normal databases: Fetches full schema efficiently
+- Returns optimization recommendations and token-saving estimates
+
+**Example results**:
+- Small DB (20 tables) → fetches all 20 tables, zero filtering needed
+- Large DB (250 tables) + "loyalty points" → fetches ~10 relevant tables (~95% token savings)
+
+**Then present a brief auto-detected list:** "I found these related tables: [list]" — proceed without waiting for confirmation
 
 ### Step 2 – Understand the Request
 - Read the user's input carefully.

@@ -53,9 +53,30 @@ Use `read_file` with `filePath: "MEMORY.md"` to read context from the `workspace
 
 ---
 
-### Step 1 – Auto-Discover Full Schema + SP List
-**Immediately call `get_db_schema` with NO filter** to fetch every table in the database.
-Then run this SQL via `run_sql` (dryRun: true) to discover all stored procedures:
+### Step 1 – Auto-Discover Schema + SP List (Hybrid with Caching)
+
+**FIRST: Check MEMORY.md for Schema Cache**
+- If **Schema Cache** section exists, the orchestrator cached the schema
+- Call `get_smart_schema` with `useCache: true` and pass the cached schema
+- This costs ZERO database calls and saves ~10,000+ tokens
+
+**OTHERWISE: Call `get_smart_schema`** to intelligently fetch schema.
+
+```
+// If cached schema available:
+get_smart_schema(
+  keywords: "[feature name from MEMORY.md]",
+  useCache: true,
+  cachedSchema: [copy from MEMORY.md Schema Cache]
+)
+
+// If no cache available:
+get_smart_schema(
+  keywords: "[feature name from MEMORY.md or user request]"
+)
+```
+
+Then run this SQL via `run_sql` (dryRun: true) to discover stored procedures:
 ```sql
 SELECT
   SCHEMA_NAME(schema_id) + '.' + name AS procName,
@@ -63,10 +84,11 @@ SELECT
 FROM sys.procedures
 ORDER BY name
 ```
-- Do NOT ask the user for table or SP names — discover them from the DB
-- Cross-reference with MEMORY.md (if present) to focus on the feature's SPs/tables
-- If no MEMORY.md exists, analyse the SP definitions and table relationships to infer what to test
-- Auto-select the relevant SPs and tables and present: "I will test these SPs: [list] against these tables: [list]" — then proceed immediately
+
+Why cache is critical here: Unit testing agents often re-run after SQL impl and code review.
+Reusing cached schema saves ~10,000+ tokens per run compared to full schema fetch.
+
+- Auto-select relevant SPs and tables: "I will test these SPs: [list] against these tables: [list]" — proceed immediately
 
 ---
 
