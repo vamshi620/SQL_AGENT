@@ -47,11 +47,39 @@ The SQL_AGENT is a comprehensive SQL Server development framework that runs enti
 
 ### 2. Core Workflow
 
+#### 🎯 QUICKEST PATH: Fully Automated E2E Orchestrator
+
+The easiest and fastest way to do end-to-end SQL development:
+
+```
+In Copilot Chat:
+  "Run e2e-orchestrator with feature request: Add customer status tracking"
+  
+↓ (Orchestrator automatically executes:)
+  1. Requirements Analysis ✅
+  2. SQL Implementation (dry-run + production) ✅
+  3. Code Review ✅
+  4. Unit Testing ✅
+  5. Final Comprehensive Report ✅
+  
+✨ DONE! All artifacts ready in workspace/output/
+```
+
+**That's it!** One request, complete end-to-end pipeline, zero manual steps.
+
+See [E2E_ORCHESTRATOR_GUIDE.md](E2E_ORCHESTRATOR_GUIDE.md) for full details and examples.
+
+---
+
+#### Alternative: Manual Stage-by-Stage Workflow
+
+If you need more control, you can invoke agents individually:
+
 #### Flow Diagram
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│ Copilot Chat (VS Code) - Main Interface                    │
+│ Copilot Chat (VS Code) - Manual Workflow                   │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
 │  1. Start with a feature request                           │
@@ -75,9 +103,40 @@ The SQL_AGENT is a comprehensive SQL Server development framework that runs enti
 └─────────────────────────────────────────────────────────────┘
 ```
 
+**This requires manual invocation of each agent - use the automated orchestrator instead!**
+
 ### 3. Using MCP Tools in Copilot Chat
 
-#### Step 1: Fetch Database Schema
+#### ⭐ FASTEST WAY: Use the Fully Automated E2E Orchestrator
+
+Just give it your feature request, and it handles everything automatically:
+
+```
+In Copilot Chat:
+  @workspace Run e2e-orchestrator with feature request: 
+  "Add customer loyalty points tracking to the orders table"
+```
+
+**That's it!** The orchestrator will automatically:
+1. ✅ Analyze requirements
+2. ✅ Generate SQL with dry-run validation
+3. ✅ Execute production SQL (only if dry-run passes)
+4. ✅ Review code for SQL Server standards
+5. ✅ Generate and execute unit tests
+6. ✅ Create comprehensive final report
+
+**Total time:** 15-60 seconds (depending on feature complexity)
+**Manual steps:** 0
+
+📖 **Full Guide with Examples:** [E2E_ORCHESTRATOR_GUIDE.md](E2E_ORCHESTRATOR_GUIDE.md)
+
+---
+
+#### Manual Workflow (If You Need More Control)
+
+If you prefer to invoke agents individually, see the sections below.
+
+##### Step 1: Fetch Database Schema
 Open Copilot Chat and ask:
 ```
 @workspace Get the current database schema for planning SQL changes
@@ -85,7 +144,7 @@ Open Copilot Chat and ask:
 
 The MCP server will call `get_db_schema` and return the live schema from SQL Server.
 
-#### Step 2: Generate Requirements (Optional)
+##### Step 2: Generate Requirements (Optional)
 Use the requirements agent:
 ```
 @workspace Run the requirements agent with this feature request: 
@@ -94,7 +153,7 @@ Use the requirements agent:
 
 The MCP server calls `run_mcp_agent` with `requirements-agent`.
 
-#### Step 3: Generate SQL Implementation
+##### Step 3: Generate SQL Implementation
 Use the SQL implementation agent:
 ```
 @workspace Run the sql-impl-agent to generate SQL for adding loyalty points tracking
@@ -106,7 +165,7 @@ The MCP server calls `run_mcp_agent` with `sql-impl-agent`, which generates:
 - Stored procedures
 - Views
 
-#### Step 4: Validate with Dry-Run
+##### Step 4: Validate with Dry-Run
 Before executing, validate the SQL:
 ```
 @workspace Run the generated SQL in dry-run mode to check for errors
@@ -114,7 +173,7 @@ Before executing, validate the SQL:
 
 The MCP server calls `run_sql` with `dryRun: true`.
 
-#### Step 5: Execute SQL
+##### Step 5: Execute SQL
 Once validated, execute the changes:
 ```
 @workspace Execute the SQL changes against the production database
@@ -122,7 +181,7 @@ Once validated, execute the changes:
 
 The MCP server calls `run_sql` with `dryRun: false`.
 
-#### Step 6: Run Unit Tests
+##### Step 6: Run Unit Tests
 Test the changes:
 ```
 @workspace Run unit tests to verify the implementation
@@ -130,7 +189,7 @@ Test the changes:
 
 The MCP server calls `run_unit_tests` or `run_mcp_agent` + `unit-test-agent`.
 
-#### Step 7: Code Review
+##### Step 7: Code Review
 Review the generated SQL:
 ```
 @workspace Run code review on the generated SQL scripts
@@ -138,7 +197,7 @@ Review the generated SQL:
 
 The MCP server calls `run_mcp_agent` with `code-review-agent`.
 
-#### Step 8: Generate Documentation
+##### Step 8: Generate Documentation
 Create Word documents with findings:
 ```
 @workspace Generate a Word document with the test results and implementation summary

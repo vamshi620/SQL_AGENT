@@ -42,8 +42,33 @@ npm run build
 ## MCP-native agent calls from VS Code
 Use `run_mcp_agent` to invoke agent workflows directly from MCP.
 
+### ⚡ NEW: Fully Automated E2E Orchestrator
+
+The **`e2e-orchestrator`** agent now handles complete end-to-end SQL development **automatically**:
+
+**Single call does everything:**
+```json
+{
+  "agent": "e2e-orchestrator",
+  "payload": {
+    "featureRequest": "Add customer loyalty points tracking to orders table"
+  }
+}
+```
+
+**Orchestrator automatically:**
+1. ✅ Analyzes requirements and database schema
+2. ✅ Generates and validates SQL (dry-run first, then production)
+3. ✅ Reviews code for SQL Server best practices
+4. ✅ Generates and executes unit tests
+5. ✅ Produces comprehensive final report
+
+**No manual intervention needed!** All stages execute automatically with built-in safety gates.
+
+📖 **Full Guide:** See [E2E_ORCHESTRATOR_GUIDE.md](E2E_ORCHESTRATOR_GUIDE.md) for detailed usage and examples.
+
 ### Supported agent names
-- `e2e-orchestrator`
+- `e2e-orchestrator` (⭐ **NEW - Fully Automated**)
 - `requirements-agent`
 - `sql-impl-agent`
 - `code-review-agent`
@@ -52,7 +77,7 @@ Use `run_mcp_agent` to invoke agent workflows directly from MCP.
 ### Discover context
 Call `list_mcp_context` to get built-in agent, skill, prompt, and hook mappings.
 
-### Example call
+### Example call (Manual - Individual Agents)
 ```json
 {
   "agent": "requirements-agent",
