@@ -2,16 +2,17 @@
 /**
  * E2E Copilot Agents – MCP Server
  *
- * Exposes 9 tools to GitHub Copilot agents via the Model Context Protocol:
- *   1. get_table_names  – lightweight discovery of table names and row counts
- *   2. get_db_schema    – fetch complete SQL Server schema with columns/indexes
- *   3. run_sql          – execute SQL with dry-run safety
- *   4. generate_word_doc– produce styled .docx documents
- *   5. run_unit_tests   – execute test cases directly on real SPs/tables, capture snapshots
- *   6. save_csv         – write a CSV file to the workspace/ folder
- *   7. read_file        – read any workspace file (MEMORY.md, SQL scripts, etc.)
- *   8. write_file       – create/update workspace files (MEMORY.md, SQL scripts, etc.)
- *   9. list_files       – list files in a workspace directory
+ * Exposes 10 tools to GitHub Copilot agents via the Model Context Protocol:
+ *   1. get_table_names     – lightweight discovery of table names and row counts
+ *   2. get_db_schema       – fetch complete SQL Server schema with columns/indexes
+ *   3. get_smart_schema    – intelligent schema fetch with caching and smart filtering (HYBRID APPROACH)
+ *   4. run_sql             – execute SQL with dry-run safety
+ *   5. generate_word_doc   – produce styled .docx documents
+ *   6. run_unit_tests      – execute test cases directly on real SPs/tables, capture snapshots
+ *   7. save_csv            – write a CSV file to the workspace/ folder
+ *   8. read_file           – read any workspace file (MEMORY.md, SQL scripts, etc.)
+ *   9. write_file          – create/update workspace files (MEMORY.md, SQL scripts, etc.)
+ *   10. list_files         – list files in a workspace directory
  */
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
@@ -19,6 +20,7 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { z } from 'zod';
 
 import { getDbSchema, getTableNames }      from './tools/db-schema.js';
+import { getSmartSchema, suggestRelevantTables } from './tools/get-smart-schema.js';
 import { runSql }           from './tools/run-sql.js';
 import { generateWordDoc }  from './tools/generate-docx.js';
 import { runUnitTests }     from './tools/run-tests.js';
@@ -77,6 +79,94 @@ server.tool(
   async () => {
     try {
       const result = await getTableNames();
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: JSON.stringify(result, null, 2),
+          },
+        ],
+      };
+    } catch (err) {
+      return {
+        content: [{ type: 'text' as const, text: `ERROR: ${String(err)}` }],
+        isError: true,
+      };
+    }
+  }
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Tool 1c: get_smart_schema (hybrid approach with caching & smart filtering)
+// ─────────────────────────────────────────────────────────────────────────────
+server.tool(
+  'get_smart_schema',
+  'RECOMMENDED: Intelligent schema fetching with hybrid optimization. ' +
+  'Combines keyword extraction, schema caching, and database size detection to minimize token usage on large databases. ' +
+  'Strategy: If keywords provided, fetches only relevant tables. If large DB (>100 tables), suggests filtering. ' +
+  'If cached schema available, reuses it (zero DB calls). ' +
+  'Use this instead of get_db_schema in orchestrator and agents for large databases.',
+  {
+    keywords: z
+      .string()
+      .optional()
+      .describe('Natural language description of the feature (e.g., "loyalty points system"). Used to identify relevant tables. Leave empty for full schema.'),
+    useCache: z
+      .boolean()
+      .optional()
+      .default(false)
+      .describe('If true and cachedSchema is provided, reuses cached schema (zero token cost). Set to true in downstream agents.'),
+    cachedSchema: z
+      .any()
+      .optional()
+      .describe('Cached schema object from MEMORY.md (CachedSchemaFormat). When provided with useCache=true, skips database calls entirely.'),
+    forceFull: z
+      .boolean()
+      .optional()
+      .default(false)
+      .describe('If true, fetches full schema even if not recommended. Use for schema exploration.'),
+  },
+  async ({ keywords, useCache, cachedSchema, forceFull }) => {
+    try {
+      const result = await getSmartSchema({
+        keywords,
+        useCache,
+        cachedSchema,
+        forceFull,
+      });
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: JSON.stringify(result, null, 2),
+          },
+        ],
+      };
+    } catch (err) {
+      return {
+        content: [{ type: 'text' as const, text: `ERROR: ${String(err)}` }],
+        isError: true,
+      };
+    }
+  }
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Tool 1d: suggest_relevant_tables (lightweight recommendation engine)
+// ─────────────────────────────────────────────────────────────────────────────
+server.tool(
+  'suggest_relevant_tables',
+  'Fast recommendation: Suggests which tables are relevant to a feature description WITHOUT fetching full schema. ' +
+  'Returns only table names and count, useful for planning which tables to filter when calling get_db_schema. ' +
+  'This is the first step of the hybrid optimization: call this, review suggestions, then call get_db_schema with filtered list.',
+  {
+    keywords: z
+      .string()
+      .describe('Feature description or keywords (e.g., "customer loyalty points"). Used to find matching tables.'),
+  },
+  async ({ keywords }) => {
+    try {
+      const result = await suggestRelevantTables(keywords);
       return {
         content: [
           {

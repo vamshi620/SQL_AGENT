@@ -40,17 +40,33 @@ If `MEMORY.md` exists in the `workspace/` folder:
 
 If MEMORY.md does NOT exist, ask the user for requirements (standalone mode).
 
-### Step 1 – Auto-Discover Schema (Optimized for Large Databases)
-**For large databases (>100 tables), use two-phase discovery to reduce token usage:**
+### Step 1 – Auto-Discover Schema (Hybrid Optimization with Caching)
 
-**Phase 1 – Lightweight Table Discovery:**
-- Call `get_table_names` to fetch table names and row counts only (no column/index details)
-- From MEMORY.md Requirements section, extract entity names and identify relevant tables
-- If >20 relevant tables found, narrow to the ~10 most important ones (highest row counts + most relevant names)
+**FIRST: Check MEMORY.md for Schema Cache**
+- If **Schema Cache** section exists in MEMORY.md, the orchestrator already fetched and cached the schema
+- Call `get_smart_schema` with `useCache: true` and pass the cached schema
+- This costs ZERO database calls and saves ~10,000+ tokens
 
-**Phase 2 – Full Schema Fetch:**
-- Call `get_db_schema` with `tables` parameter set to the filtered list from Phase 1
-- If `get_table_names` is unavailable or DB is small (<50 tables), call `get_db_schema` with NO filter directly
+**OTHERWISE: Call `get_smart_schema`** for intelligent schema fetching.
+
+```
+// If cached schema available:
+get_smart_schema(
+  keywords: "[feature description from MEMORY.md Requirements]",
+  useCache: true,
+  cachedSchema: [copy the JSON from MEMORY.md Schema Cache]
+)
+
+// If no cache available:
+get_smart_schema(
+  keywords: "[feature description from MEMORY.md Requirements]"
+)
+```
+
+This hybrid approach:
+- **With cache**: Zero DB calls, ~95% token savings vs. re-fetching
+- **Without cache**: Intelligently identifies relevant tables via keyword matching
+- Extracts entity names from requirements (e.g., "create LoyaltyPoints table" → searches for loyalty/points tables)
 
 **Then show a brief auto-detected impact summary:** "Based on the schema I found: [table list]" — then proceed
 

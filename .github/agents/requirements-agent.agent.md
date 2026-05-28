@@ -40,17 +40,25 @@ If `MEMORY.md` exists in the `workspace/` folder:
 
 If MEMORY.md does NOT exist, proceed normally (standalone mode).
 
-### Step 1 – Auto-Discover Schema (Optimized for Large Databases)
-**For large databases (>100 tables), use two-phase discovery to reduce token usage:**
+### Step 1 – Auto-Discover Schema (Hybrid Optimization)
 
-**Phase 1 – Lightweight Table Discovery:**
-- Call `get_table_names` to fetch table names and row counts only (no column/index details)
-- Identify relevant tables by matching entity names to your request keywords
-- If >20 relevant tables found, narrow to the ~10 most important ones (highest row counts + most relevant names)
+**RECOMMENDED: Call `get_smart_schema`** for intelligent, automatic schema fetching optimized for token usage.
 
-**Phase 2 – Full Schema Fetch:**
-- Call `get_db_schema` with `tables` parameter set to the filtered list from Phase 1
-- If `get_table_names` is unavailable or DB is small (<50 tables), call `get_db_schema` with NO filter directly
+```
+get_smart_schema(
+  keywords: "[user's feature description from Step 0 or the chat]"
+)
+```
+
+This hybrid approach automatically:
+- Extracts keywords from your description (e.g., "loyalty points" → ["loyalty", "points"])
+- For large databases (>100 tables): Identifies relevant tables via keyword matching
+- For normal databases: Fetches full schema efficiently
+- Returns optimization recommendations and token-saving estimates
+
+**Example results**:
+- Small DB (20 tables) → fetches all 20 tables, zero filtering needed
+- Large DB (250 tables) + "loyalty points" → fetches ~10 relevant tables (~95% token savings)
 
 **Then present a brief auto-detected list:** "I found these related tables: [list]" — proceed without waiting for confirmation
 

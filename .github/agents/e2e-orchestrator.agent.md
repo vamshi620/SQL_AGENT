@@ -72,12 +72,20 @@ Extract from the user's message:
 
 Do NOT ask the user for table names — you will auto-discover them in Step 3.
 
-### 3. Auto-Discover Full Schema
+### 3. Auto-Discover Schema (Hybrid Optimization)
 
-**Immediately call `get_db_schema` with NO filter** to fetch every table in the database.
-- Analyse the returned schema to identify which tables are related to the feature
-- Derive **Affected Tables** and **Key Entities** from the schema — do not ask the user
-- Produce a **2-3 line schema summary** listing the relevant tables and their purpose
+**RECOMMENDED: Call `get_smart_schema` with the feature description** to intelligently fetch schema.
+- For large databases (>100 tables): Automatically identifies relevant tables via keyword matching, fetching only what's needed
+- For normal databases: Fetches full schema efficiently
+- The returned schema will be cached in MEMORY.md for downstream agents (zero additional token cost)
+
+**Why get_smart_schema instead of get_db_schema?**
+- Significantly reduces token usage on large enterprise databases
+- Example: 250-table DB with "loyalty points" keywords → fetches only 8-12 relevant tables (~90% token savings)
+- Provides optimization recommendations and token-saving estimates
+- Caching prevents re-fetching in subsequent agents
+
+**Fallback**: If get_smart_schema is unavailable, call `get_db_schema` with NO filter (legacy behavior).
 
 ### 4. Initialize MEMORY.md
 
@@ -89,7 +97,7 @@ Create or overwrite `MEMORY.md` with this exact structure:
 ## Session Info
 - **Feature**: [feature name]
 - **Started**: [ISO date]
-- **Database**: [db name from get_db_schema]
+- **Database**: [db name from get_smart_schema]
 - **Feature Slug**: [slug]
 
 ## User Request
@@ -97,6 +105,25 @@ Create or overwrite `MEMORY.md` with this exact structure:
 
 ## Schema Context
 [2-3 line summary of relevant tables from schema-analysis skill]
+
+## Schema Cache (for downstream agents to reuse)
+⚠️ **IMPORTANT**: Downstream agents MUST use this cached schema instead of fetching their own.
+- Copy the entire `CachedSchemaFormat` JSON object below
+- Pass it to downstream agents as the `cachedSchema` parameter with `useCache: true`
+- This saves ~10,000+ tokens per agent in large databases
+
+```json
+{
+  "databaseName": "[DB_NAME]",
+  "cacheTimestamp": "[ISO_TIMESTAMP]",
+  "tableCount": [COUNT],
+  "totalRowCount": [ROW_COUNT],
+  "tablesSummary": [
+    "TableName1|dbo|1000",
+    "TableName2|dbo|5000"
+  ]
+}
+```
 
 ## Pipeline Status
 | Stage | Status | Output | Completed At |

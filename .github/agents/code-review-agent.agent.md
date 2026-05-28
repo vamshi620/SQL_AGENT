@@ -51,19 +51,35 @@ The user will provide one of:
 If a file path is given, read the file content from the workspace.
 If a stored procedure name is given, call `run_sql` with dryRun=true to fetch the proc definition from sys.sql_modules.
 
-### Step 2 – Auto-Discover Schema Context (Optimized for Large Databases)
-**For large databases (>100 tables), use two-phase discovery to reduce token usage:**
+### Step 2 – Auto-Discover Schema Context (Hybrid with Caching)
 
-**Phase 1 – Lightweight Table Discovery:**
-- Call `get_table_names` to fetch table names and row counts only
-- From the SQL code under review, extract referenced table names (SELECT, INSERT, UPDATE, DELETE, JOIN statements)
-- Collect all referenced tables; if >20 tables, prioritize those most frequently referenced
+**FIRST: Check MEMORY.md for Schema Cache**
+- If **Schema Cache** section exists, the orchestrator cached the schema
+- Call `get_smart_schema` with `useCache: true` and pass the cached schema
+- This costs ZERO database calls and saves ~10,000+ tokens
 
-**Phase 2 – Full Schema Fetch:**
-- Call `get_db_schema` with `tables` parameter set to the referenced/filtered list from Phase 1
-- If `get_table_names` is unavailable or DB is small (<50 tables), call `get_db_schema` with NO filter directly
+**OTHERWISE: Call `get_smart_schema`** to intelligently fetch needed schema.
 
-**Then identify issues:** detect missing indexes, dangling FK references, or column type mismatches against the filtered schema
+```
+// If cached schema available:
+get_smart_schema(
+  keywords: "[SQL code context or table names from the files]",
+  useCache: true,
+  cachedSchema: [copy from MEMORY.md Schema Cache]
+)
+
+// If no cache available:
+get_smart_schema(
+  keywords: "[tables referenced in the SQL code: Orders, Customers, etc.]"
+)
+```
+
+This hybrid approach:
+- **With cache**: Zero DB calls, ~95% token savings vs. re-fetching (highest ROI!)
+- **Without cache**: Extracts table references from SQL code and fetches only relevant tables
+- For code review, usually you only need 5-15 tables instead of all 100+
+
+**Then identify issues:** detect missing indexes, dangling FK references, or column type mismatches against the fetched schema
 
 ### Step 3 – Perform the Code Review
 Analyze the code across these dimensions:
