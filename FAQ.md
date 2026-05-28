@@ -47,255 +47,125 @@ You must configure the `.env` file with valid SQL Server connection details (see
 ---
 
 ### Q5: How are these custom agents different from normal prompting in the Chat window?
-**A:** This is a fundamental distinction. Here's a detailed breakdown:
 
-#### **1. Specialized Tool Access (MCP Server)**
+**A:** Here's the difference in **simple, everyday language**:
 
-**Normal Chat:**
-- Limited to Copilot's built-in, generic capabilities
-- Cannot directly connect to your SQL Server database
-- Cannot execute real SQL or retrieve your actual schema
-- Provides hypothetical advice without validation
+#### **🤖 Normal Copilot Chat**
 
-**Custom Agents:**
-- Have exclusive access to a **shared MCP server with 7 specialized tools**:
-  - `get_db_schema` — Fetches your LIVE database schema (actual tables, columns, constraints, indexes)
-  - `run_sql` — Executes SQL with dry-run validation (preview + confirm before real execution)
-  - `generate_word_doc` — Creates professional Word documents (.docx)
-  - `run_unit_tests` — Deploys and runs actual tSQLt or custom test procedures
-  - `read_file`, `write_file`, `list_files` — Workspace file operations for state management
+Think of normal Copilot like a **helpful co-worker sitting next to you** who knows generic stuff about SQL:
+- You ask: "Write me a stored procedure"
+- They say: "Sure! Here's some code..." (generic template)
+- You: Copy/paste it, test it yourself, fix errors, run it manually
+- Then: You ask about code review, they review generically without seeing YOUR actual database
+- Then: You manually write tests, deploy them, run them
+- Finally: You paste everything into Word and format it
 
-#### **2. Persistent State Management & Pipeline Coordination**
-
-**Normal Chat:**
-- Each conversation is stateless and isolated
-- No memory between chat turns (must re-explain context each time)
-- You manually manage state across the workflow
-- Inconsistent context = inconsistent results
-
-**Custom Agents:**
-- Maintain a **shared `MEMORY.md` file** that tracks pipeline state
-- Each agent writes its results back to `MEMORY.md` for the next agent to consume
-- Creates a **continuous handoff protocol** between pipeline stages:
-  ```
-  Step 1 (Requirements) → Step 2 (SQL Impl) → Step 3 (Code Review) → Step 4 (Tests)
-                              ↓ updates MEMORY.md after each step
-  ```
-- **Orchestrator Agent** automatically coordinates all 4 specialized agents
-- Results persist and are available to subsequent stages
-
-**Example Context Flow:**
-```
-User asks orchestrator about loyalty points feature
-  ↓ Orchestrator fetches schema, creates MEMORY.md
-  ↓ Requirements Agent reads MEMORY.md, generates requirements doc, updates MEMORY.md
-  ↓ SQL Agent reads requirements from MEMORY.md, generates SQL, updates MEMORY.md
-  ↓ Code Review Agent reads SQL from MEMORY.md, reviews it, updates MEMORY.md
-  ↓ Unit Test Agent reads everything from MEMORY.md, deploys & tests, updates MEMORY.md
-  ↓ Orchestrator generates final summary report
-```
-
-#### **3. Coordinated Multi-Step Workflows**
-
-**Normal Chat:**
-- You manually coordinate each step (4+ separate conversations needed)
-- Workflow: "Generate requirements" → "Generate SQL" → "Review code" → "Write tests"
-- Easy to lose context or make mistakes between steps
-- No automatic handoff protocol
-
-**Custom Agents:**
-- **Orchestrator automatically coordinates all 4 agents**
-- Click handoff buttons to pass context and results between stages
-- Ensures **consistency and traceability** across the entire pipeline
-- Generates a **final completion report** with all artifacts
-
-#### **4. Domain-Specific Knowledge (Reusable Skills)**
-
-**Normal Chat:**
-- Copilot gives generic SQL advice (one-size-fits-all)
-- May not follow your project's specific conventions or standards
-- No structured validation against best practices
-
-**Custom Agents:**
-- Use **5 reusable Skills** that encode domain expertise and project conventions:
-  - `sql-tsql-standards` — Enforces SQL Server naming conventions, security patterns, performance optimization rules
-  - `schema-analysis` — Structured interpretation of database metadata
-  - `sql-test-patterns` — Test templates, coverage checklists, tSQLt conventions
-  - `docx-document-writer` — Professional document formatting, section structures
-  - `agent-handoff` — Pipeline communication protocols between agents
-- **Each agent references relevant skills**, ensuring consistent, professional output
-
-#### **5. Real Database Validation vs. Hypothetical**
-
-**Normal Chat:**
-- Generates SQL code, but **cannot verify it actually works**
-- You must manually test everything
-- No constraint checking, no execution validation
-- Results depend on what you copy/paste and test manually
-
-**Custom Agents:**
-- **Dry-run first** — Preview all SQL changes without committing them
-- **Live schema validation** — Checks data types, constraints, foreign keys against actual database
-- **Actual test execution** — Deploys code and runs unit tests on real database
-- **Staged execution** — Only executes after you confirm dry-run results
-- **Result capture** — All test results and deployments are logged and reported
-
-#### **6. Structured Professional Output**
-
-**Normal Chat:**
-- Responses are plain text in the chat window
-- Copy/paste the SQL or code manually
-- No automated documentation
-
-**Custom Agents:**
-- **Auto-generate professional Word documents** saved to `output/`:
-  - `requirements-*.docx` — Formatted requirements with DB schema analysis
-  - `code-review-*.docx` — Review findings with severity levels and recommendations
-  - `test-report-*.docx` — Test results with pass/fail metrics and coverage
-  - `pipeline-summary-*.docx` — Complete end-to-end summary
-- Documents are **ready to share** with stakeholders, archive, or email
-
-#### **7. Security & Safety Guardrails**
-
-**Normal Chat:**
-- No built-in protections
-- You could accidentally ask for and run `DROP TABLE` without thinking
-
-**Custom Agents:**
-- **Security hooks** enforce safety:
-  - Blocks `DROP TABLE`, `TRUNCATE TABLE` unless in dry-run mode
-  - Enforces `WHERE` clauses on `DELETE` operations
-  - Prevents unintended data loss
-- **Audit logging** — Every tool call is logged to `logs/agent-audit.log` for compliance and debugging
-- **Dry-run enforcer** — Ensures preview runs before any real execution
-
-#### **8. Lifecycle Hooks & Automation**
-
-**Normal Chat:**
-- No automated setup, teardown, or validation
-- You manually ensure prerequisites are met
-
-**Custom Agents:**
-- **4 built-in lifecycle hooks**:
-  - `sessionStart` — Auto-checks .env configuration, verifies MCP build, displays project status
-  - `preToolUse` — Enforces dry-run validation, validates user permissions before execution
-  - `postToolUse` — Logs results, updates MEMORY.md, captures state
-  - `sessionEnd` — Cleanup, final summary, next steps
-- Hooks ensure **consistency and safety** across every session
-
-#### **9. Custom Slash Commands**
-
-**Normal Chat:**
-- Limited to generic commands: `/search`, `/clear`, `/help`
-
-**Custom Agents:**
-- **Project-specific slash commands**:
-  - `/new-pipeline` — Start a new feature workflow with the orchestrator
-  - `/run-full-pipeline` — Execute all 4 agents sequentially for a feature
-  - `/db-health-check` — Analyze schema for issues and inconsistencies
-  - `/generate-unit-tests` — Auto-generate comprehensive test suite for a stored procedure
-- Commands are **scoped to this SQL Server development context**
-
-#### **10. Explicit Role-Based Agent Specialization**
-
-**Normal Chat:**
-- Copilot tries to help with everything (general purpose)
-- Gives generic advice that might not be SQL-specific
-- No specialized expertise or role clarity
-
-**Custom Agents:**
-- **Each agent has a specific role and enforces it**:
-  - `@requirements-agent` — Always focused on requirements capture, domain analysis, stakeholder needs
-  - `@sql-impl-agent` — Specialized in SQL code generation, schema-aware DDL/DML/procs
-  - `@code-review-agent` — Enforces coding standards, security, performance, maintainability
-  - `@unit-test-agent` — Focuses on test coverage, edge cases, deployment validation
-  - `@e2e-orchestrator` — Coordinates entire pipeline, maintains state, ensures handoffs
-- Invocation via `@mention` syntax makes role expectations explicit
+**The problem**: It's generic, manual, and you have to re-explain everything each time.
 
 ---
 
-#### **Quick Comparison Table**
+#### **✨ Custom Agents (This Project)**
 
-| Aspect | Normal Chat | Custom Agents |
+Think of custom agents like having **a specialized team working FOR you**:
+
+1. **They See YOUR Actual Database** 
+   - Normal Copilot: Gives generic advice
+   - **Custom Agents**: Fetch your REAL database schema automatically. They KNOW your actual tables, columns, and connections. No guessing.
+
+2. **They Remember Everything**
+   - Normal Copilot: Forgets context after each chat message (you have to repeat yourself)
+   - **Custom Agents**: Write notes in `MEMORY.md`. Every agent reads the same notes. Everyone knows exactly what happened before. No repeating yourself.
+
+3. **They Work Together Automatically**
+   - Normal Copilot: You manually say "now do step 2... now do step 3..."
+   - **Custom Agents**: One agent calls the next. Click a button and the whole pipeline runs. Like an assembly line that works without you managing it.
+
+4. **They Follow YOUR Rules**
+   - Normal Copilot: Generic SQL advice
+   - **Custom Agents**: Enforce your project's specific rules, naming conventions, and best practices automatically.
+
+5. **They Actually Test Things**
+   - Normal Copilot: Generates code you hope works
+   - **Custom Agents**: **Dry-run first** (show you what would happen without actually doing it), then execute. You approve before anything real happens. Safe!
+
+6. **They Create Professional Documents**
+   - Normal Copilot: You copy/paste text into Word and format manually
+   - **Custom Agents**: Auto-generate professional Word documents ready to send to your boss or team. Done!
+
+7. **They Prevent Mistakes**
+   - Normal Copilot: Nothing stops you from accidentally running `DROP TABLE` 
+   - **Custom Agents**: Built-in safety guards. Blocks dangerous operations. Logs everything for audit.
+
+8. **They Handle Setup Automatically**
+   - Normal Copilot: You manually check prerequisites
+   - **Custom Agents**: Auto-check that everything is ready before starting. Check .env, verify MCP server is built, confirm database connection. Automatic!
+
+9. **They Specialize**
+   - Normal Copilot: Jack of all trades, master of none
+   - **Custom Agents**: Each agent is specialized:
+     - One focuses ONLY on requirements
+     - One focuses ONLY on SQL code generation
+     - One focuses ONLY on code review
+     - One focuses ONLY on testing
+
+10. **They Work With Your Real Database**
+    - Normal Copilot: Hypothetical advice ("this code *should* work")
+    - **Custom Agents**: Actually connect to YOUR SQL Server, validate constraints, run REAL tests. Proof it works!
+
+---
+
+#### **⏱️ Time Comparison (Real Numbers)**
+
+**Normal Chat Approach:**
+```
+Tell Copilot to write stored procedure → Copy/paste into SSMS → Test manually
+Ask for code review → Get generic feedback → Apply fixes manually  
+Write tests manually → Deploy manually → Run tests manually
+Copy results → Paste into Word → Format manually → Send
+Total: 45-60 MINUTES
+```
+
+**Custom Agents (This Project):**
+```
+Tell @orchestrator: "Build loyalty points system"
+Click button: Step 1 - Auto-generates requirements doc
+Click button: Step 2 - Auto-generates SQL, dry-runs, deploys
+Click button: Step 3 - Auto-reviews against your standards
+Click button: Step 4 - Auto-deploys and runs real tests
+DONE: All documents ready
+Total: 5-15 MINUTES
+```
+
+---
+
+#### **📊 Quick Comparison**
+
+| What You Need | Normal Chat | Custom Agents |
 |---|---|---|
-| **Live Database Access** | ❌ No | ✅ Yes (real schema, real data) |
-| **SQL Execution** | ❌ No | ✅ Yes (dry-run + real execution) |
-| **State Tracking** | ❌ No (stateless) | ✅ Yes (MEMORY.md persistent state) |
-| **Multi-Step Orchestration** | ❌ Manual | ✅ Automated pipeline coordination |
-| **Domain Knowledge** | ⚠️ Generic | ✅ SQL-specific (5 Skills) |
-| **Professional Output** | Plain text | ✅ Word documents (.docx) |
-| **Security Guardrails** | ❌ None | ✅ Hooks + audit logging |
-| **Dry-Run Validation** | ❌ No | ✅ Yes (always preview first) |
-| **Test Execution** | ❌ Manual | ✅ Auto-deploy + run |
-| **Consistency** | ⚠️ Varies | ✅ Standardized process |
-| **Context Persistence** | ❌ Conversation ends | ✅ MEMORY.md + handoff protocols |
-| **Audit Trail** | ❌ None | ✅ Complete logging |
+| **Access to YOUR database** | ❌ No way | ✅ Yes, automatically |
+| **Memory between steps** | ❌ Nope, you repeat yourself | ✅ Yes, MEMORY.md tracks everything |
+| **Automatic workflow** | ❌ Manual click-click-click | ✅ One click, rest is automatic |
+| **Professional documents** | ❌ Copy/paste from chat | ✅ Auto-generated Word docs |
+| **Safe operations** | ❌ You could mess up | ✅ Dry-run first, then confirm |
+| **Specialized expertise** | ❌ Generic help | ✅ Focused experts for each task |
+| **Actually works on YOUR DB** | ❌ Hypothetical | ✅ Real validation + real testing |
+| **Consistent quality** | ❌ Varies | ✅ Same process = same quality |
 
 ---
 
-#### **Real-World Time Comparison**
+#### **🎯 Bottom Line**
 
-**Normal Chat Workflow:**
-```
-You:    "Write a stored procedure for loyalty points"
-Copilot: [Generic SQL in chat]
-You:    [Copy SQL, paste into SSMS, test manually]
-You:    "Now review this code for security"
-Copilot: [Generic review, no schema context]
-You:    [Manually apply suggestions, test again]
-You:    "Write tests for this"
-Copilot: [Generic test templates]
-You:    [Write test procs, deploy to DB, run manually]
-You:    [Copy results into Word doc, format manually]
-You:    [Send to stakeholders]
-```
-⏱️ **Time: 45-60 minutes** (manual, error-prone, inconsistent)
+| Feature | Normal Copilot | Custom Agents |
+|---|---|---|
+| **What it is** | Helpful chatbot | Professional team of specialists |
+| **Database access** | None | Full access |
+| **Remembers context** | No | Yes (MEMORY.md) |
+| **Automates workflow** | No | Yes (4 agents coordinated) |
+| **Speed** | 45-60 min | 5-15 min |
+| **Output quality** | Generic | Professional |
+| **Safety** | Your responsibility | Built-in guardrails |
 
-**Custom Agent Workflow:**
-```
-You: "@e2e-orchestrator I need a loyalty points system"
-↓ Orchestrator fetches schema, creates MEMORY.md
-↓ Presents 4 pipeline stage buttons
-
-You: [Click Step 1 - Requirements]
-↓ Requirements Agent auto-generates requirements doc
-↓ Analyzes actual schema, creates requirements-*.docx
-
-You: [Click Step 2 - SQL Implementation]
-↓ SQL Agent reads requirements from MEMORY.md
-↓ Generates SQL, dry-runs, deploys, updates MEMORY.md
-↓ All SQL saved to files, MEMORY.md updated
-
-You: [Click Step 3 - Code Review]
-↓ Code Review Agent reads SQL from MEMORY.md
-↓ Reviews against sql-tsql-standards skill
-↓ Creates code-review-*.docx with findings
-
-You: [Click Step 4 - Unit Tests]
-↓ Unit Test Agent deploys, runs actual tests
-↓ Creates test-report-*.docx with results
-
-↓ Orchestrator generates final pipeline-summary-*.docx
-↓ All artifacts ready to share
-```
-⏱️ **Time: 5-15 minutes** (automated, validated, audited, professional)
-
----
-
-#### **Summary: Why This Matters**
-
-1. **Consistency** — Same standardized process produces same quality results every time
-2. **Speed** — Automated orchestration eliminates manual handoffs and copy/paste
-3. **Safety** — Dry-run validation + security hooks prevent mistakes
-4. **Traceability** — Full audit log of what happened, when, and why
-5. **Professionalism** — Auto-generated Word documents ready for stakeholders
-6. **Repeatability** — Same workflow for every feature/project
-7. **Validation** — Works with actual SQL Server, not hypothetical advice
-8. **Context** — MEMORY.md maintains state across entire pipeline
-9. **Specialization** — Each agent has specific expertise and role
-10. **Integration** — Direct database connection enables real validation
-
-**Custom agents transform Copilot from a conversational assistant into a specialized, production-grade SQL development pipeline.**
+**In one sentence**: Normal Copilot is like asking a coworker questions. These custom agents are like having a specialized team that knows YOUR database and automates the entire process from start to finish.
 
 ---
 
