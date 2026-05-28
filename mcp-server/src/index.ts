@@ -2,7 +2,7 @@
 /**
  * E2E Copilot Agents – MCP Server
  *
- * Exposes 8 tools to GitHub Copilot agents via the Model Context Protocol:
+ * Exposes 10 tools to GitHub Copilot via the Model Context Protocol:
  *   1. get_db_schema    – fetch SQL Server schema
  *   2. run_sql          – execute SQL with dry-run safety
  *   3. generate_word_doc– produce styled .docx documents
@@ -11,6 +11,8 @@
  *   6. read_file        – read any workspace file (MEMORY.md, SQL scripts, etc.)
  *   7. write_file       – create/update workspace files (MEMORY.md, SQL scripts, etc.)
  *   8. list_files       – list files in a workspace directory
+ *   9. list_mcp_context – list MCP-native agents/skills/prompts/hooks context
+ *  10. run_mcp_agent    – invoke MCP-native agent workflows
  */
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
@@ -23,6 +25,7 @@ import { generateWordDoc }  from './tools/generate-docx.js';
 import { runUnitTests }     from './tools/run-tests.js';
 import { saveCsv }          from './tools/save-csv.js';
 import { readFile, writeFile, listFiles } from './tools/file-system.js';
+import { listMcpContext, runMcpAgent } from './tools/agent-runtime.js';
 
 // ── Create the MCP server ──────────────────────────────────────────────────
 const server = new McpServer({
@@ -369,6 +372,73 @@ server.tool(
   async ({ directory, pattern, recursive }) => {
     try {
       const result = listFiles({ directory, pattern, recursive });
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: JSON.stringify(result, null, 2),
+          },
+        ],
+      };
+    } catch (err) {
+      return {
+        content: [{ type: 'text' as const, text: `ERROR: ${String(err)}` }],
+        isError: true,
+      };
+    }
+  }
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Tool 9: list_mcp_context
+// ─────────────────────────────────────────────────────────────────────────────
+server.tool(
+  'list_mcp_context',
+  'Returns MCP-native context catalog containing agent, skill, prompt, and hook mappings.',
+  {},
+  async () => {
+    try {
+      const result = listMcpContext();
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: JSON.stringify(result, null, 2),
+          },
+        ],
+      };
+    } catch (err) {
+      return {
+        content: [{ type: 'text' as const, text: `ERROR: ${String(err)}` }],
+        isError: true,
+      };
+    }
+  }
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Tool 10: run_mcp_agent
+// ─────────────────────────────────────────────────────────────────────────────
+server.tool(
+  'run_mcp_agent',
+  'Invokes MCP-native agent workflows (orchestrator/requirements/sql-impl/code-review/unit-test) and returns outputs.',
+  {
+    agent: z
+      .enum([
+        'e2e-orchestrator',
+        'requirements-agent',
+        'sql-impl-agent',
+        'code-review-agent',
+        'unit-test-agent',
+      ])
+      .describe('Agent to invoke from MCP.'),
+    payload: z
+      .record(z.string(), z.unknown())
+      .describe('Agent input payload. Include fields required by selected agent.'),
+  },
+  async ({ agent, payload }) => {
+    try {
+      const result = await runMcpAgent(agent, payload);
       return {
         content: [
           {

@@ -1,7 +1,7 @@
 # GitHub Copilot – MCP-Only Workspace Instructions
 
 ## Scope
-This workspace is MCP-only. Do not use custom agents, prompt files, skills, or hook files.
+This workspace is MCP-only. Use MCP tools only.
 
 ## End-to-End Flow (MCP Tools Only)
 1. `get_db_schema` → inspect live schema
@@ -11,6 +11,8 @@ This workspace is MCP-only. Do not use custom agents, prompt files, skills, or h
 5. `run_unit_tests` → execute test cases and collect snapshots
 6. `save_csv` → persist tabular test artifacts
 7. `read_file`, `write_file`, `list_files` → manage workspace files
+8. `list_mcp_context` → inspect MCP-native agents/skills/prompts/hooks context
+9. `run_mcp_agent` → execute agent workflows from MCP
 
 ## SQL Rules
 - Use SQL Server T-SQL only
@@ -22,3 +24,12 @@ This workspace is MCP-only. Do not use custom agents, prompt files, skills, or h
 - Always run a dry-run before non-dry-run SQL execution
 - Never run destructive SQL (`DROP`, `TRUNCATE`, mass `DELETE`) without explicit user approval
 - Return output file paths after document generation
+
+## MCP-native Agents
+- `e2e-orchestrator`
+- `requirements-agent`
+- `sql-impl-agent`
+- `code-review-agent`
+- `unit-test-agent`
+
+Use `run_mcp_agent` with one of these agent names and a payload.
