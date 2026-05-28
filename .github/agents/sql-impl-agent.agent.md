@@ -40,15 +40,19 @@ If `MEMORY.md` exists in the `workspace/` folder:
 
 If MEMORY.md does NOT exist, ask the user for requirements (standalone mode).
 
-### Step 1 – Auto-Discover Full Schema
-**Immediately call `get_db_schema` with NO filter** to fetch every table, column, index, and foreign key in the database.
-- Do NOT ask the user for table names — discover them yourself
-- Analyze the full schema to identify:
-  - Tables that already exist and are relevant to the feature
-  - Missing tables that need to be created
-  - Columns that need to be added or modified
-  - Existing stored procedures (query `sys.procedures`) that may need updating
-- Show a brief auto-detected impact summary: "Based on the schema I found: [table list]" — then proceed
+### Step 1 – Auto-Discover Schema (Optimized for Large Databases)
+**For large databases (>100 tables), use two-phase discovery to reduce token usage:**
+
+**Phase 1 – Lightweight Table Discovery:**
+- Call `get_table_names` to fetch table names and row counts only (no column/index details)
+- From MEMORY.md Requirements section, extract entity names and identify relevant tables
+- If >20 relevant tables found, narrow to the ~10 most important ones (highest row counts + most relevant names)
+
+**Phase 2 – Full Schema Fetch:**
+- Call `get_db_schema` with `tables` parameter set to the filtered list from Phase 1
+- If `get_table_names` is unavailable or DB is small (<50 tables), call `get_db_schema` with NO filter directly
+
+**Then show a brief auto-detected impact summary:** "Based on the schema I found: [table list]" — then proceed
 
 ### Step 2 – Parse the Requirements
 - Read the **User Request** and **Requirements** sections from MEMORY.md (or the user's message in standalone mode)

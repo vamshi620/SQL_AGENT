@@ -40,11 +40,19 @@ If `MEMORY.md` exists in the `workspace/` folder:
 
 If MEMORY.md does NOT exist, proceed normally (standalone mode).
 
-### Step 1 – Auto-Discover Full Schema
-**Immediately call `get_db_schema` with NO filter** to fetch every table in the database.
-- Do NOT ask the user for table names — discover them yourself
-- From the full schema, identify which tables are relevant to the user's request by matching entity names, column names, and relationships
-- Present a brief auto-detected list: "I found these related tables: [list]" — then proceed without waiting for confirmation
+### Step 1 – Auto-Discover Schema (Optimized for Large Databases)
+**For large databases (>100 tables), use two-phase discovery to reduce token usage:**
+
+**Phase 1 – Lightweight Table Discovery:**
+- Call `get_table_names` to fetch table names and row counts only (no column/index details)
+- Identify relevant tables by matching entity names to your request keywords
+- If >20 relevant tables found, narrow to the ~10 most important ones (highest row counts + most relevant names)
+
+**Phase 2 – Full Schema Fetch:**
+- Call `get_db_schema` with `tables` parameter set to the filtered list from Phase 1
+- If `get_table_names` is unavailable or DB is small (<50 tables), call `get_db_schema` with NO filter directly
+
+**Then present a brief auto-detected list:** "I found these related tables: [list]" — proceed without waiting for confirmation
 
 ### Step 2 – Understand the Request
 - Read the user's input carefully.

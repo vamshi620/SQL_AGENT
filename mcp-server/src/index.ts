@@ -2,22 +2,23 @@
 /**
  * E2E Copilot Agents – MCP Server
  *
- * Exposes 8 tools to GitHub Copilot agents via the Model Context Protocol:
- *   1. get_db_schema    – fetch SQL Server schema
- *   2. run_sql          – execute SQL with dry-run safety
- *   3. generate_word_doc– produce styled .docx documents
- *   4. run_unit_tests   – execute test cases directly on real SPs/tables, capture snapshots
- *   5. save_csv         – write a CSV file to the workspace/ folder
- *   6. read_file        – read any workspace file (MEMORY.md, SQL scripts, etc.)
- *   7. write_file       – create/update workspace files (MEMORY.md, SQL scripts, etc.)
- *   8. list_files       – list files in a workspace directory
+ * Exposes 9 tools to GitHub Copilot agents via the Model Context Protocol:
+ *   1. get_table_names  – lightweight discovery of table names and row counts
+ *   2. get_db_schema    – fetch complete SQL Server schema with columns/indexes
+ *   3. run_sql          – execute SQL with dry-run safety
+ *   4. generate_word_doc– produce styled .docx documents
+ *   5. run_unit_tests   – execute test cases directly on real SPs/tables, capture snapshots
+ *   6. save_csv         – write a CSV file to the workspace/ folder
+ *   7. read_file        – read any workspace file (MEMORY.md, SQL scripts, etc.)
+ *   8. write_file       – create/update workspace files (MEMORY.md, SQL scripts, etc.)
+ *   9. list_files       – list files in a workspace directory
  */
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
 
-import { getDbSchema }      from './tools/db-schema.js';
+import { getDbSchema, getTableNames }      from './tools/db-schema.js';
 import { runSql }           from './tools/run-sql.js';
 import { generateWordDoc }  from './tools/generate-docx.js';
 import { runUnitTests }     from './tools/run-tests.js';
@@ -47,6 +48,35 @@ server.tool(
   async ({ tables }) => {
     try {
       const result = await getDbSchema(tables);
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: JSON.stringify(result, null, 2),
+          },
+        ],
+      };
+    } catch (err) {
+      return {
+        content: [{ type: 'text' as const, text: `ERROR: ${String(err)}` }],
+        isError: true,
+      };
+    }
+  }
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Tool 1b: get_table_names (lightweight discovery)
+// ─────────────────────────────────────────────────────────────────────────────
+server.tool(
+  'get_table_names',
+  'Lightweight schema discovery: returns only table names and approximate row counts (no columns/indexes). ' +
+  'Use this to identify relevant tables for large databases before calling get_db_schema with a filtered list. ' +
+  'Significantly reduces token usage for the initial discovery phase.',
+  {},
+  async () => {
+    try {
+      const result = await getTableNames();
       return {
         content: [
           {

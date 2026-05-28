@@ -36,16 +36,84 @@ export interface DbSchemaResult {
   fetchedAt: string;
 }
 
+export interface TableNameInfo {
+  tableName: string;
+  schema: string;
+  rowCount: number | null;
+}
+
+export interface TableNamesResult {
+  databaseName: string;
+  tables: TableNameInfo[];
+  totalTableCount: number;
+  fetchedAt: string;
+}
+
+/**
+ * Lightweight schema discovery: returns only table names and row counts.
+ * Use this to identify relevant tables without fetching full schema details.
+ * Significantly reduces token usage for initial discovery on large databases.
+ */
+export async function getTableNames(): Promise<TableNamesResult> {
+  const config = getDbConfig();
+  const pool = await connectToDb();
+
+  try {
+    const query = `
+      SELECT
+        SCHEMA_NAME(t.schema_id) AS [schema],
+        t.name AS tableName,
+        p.rows AS [rowCount]
+      FROM sys.tables t
+      LEFT JOIN sys.partitions p ON p.object_id = t.object_id AND p.index_id IN (0, 1)
+      WHERE t.is_ms_shipped = 0
+      ORDER BY [schema], tableName
+    `;
+
+    const result = await pool.request().query(query);
+    const tables = result.recordset.map((row: any) => ({
+      tableName: row.tableName,
+      schema: row.schema,
+      rowCount: row.rowCount,
+    }));
+
+    return {
+      databaseName: config.database,
+      tables,
+      totalTableCount: tables.length,
+      fetchedAt: new Date().toISOString(),
+    };
+  } finally {
+    await pool.close();
+  }
+}
+
 /**
  * MCP Tool: get_db_schema
  * Connects to SQL Server and returns a full schema description
  * including tables, columns, data types, constraints, and indexes.
+ * 
+ * @param tableFilter - Optional array of table names to filter. If omitted, fetches all tables.
+ *                     For large databases (>100 tables), consider using tableFilter to reduce token usage.
  */
 export async function getDbSchema(tableFilter?: string[]): Promise<DbSchemaResult> {
   const config = getDbConfig();
   const pool = await connectToDb();
 
   try {
+    // Warn if fetching all tables from a large database
+    if (!tableFilter || tableFilter.length === 0) {
+      const tableCountQuery = `SELECT COUNT(*) AS cnt FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE'`;
+      const countResult = await pool.request().query(tableCountQuery);
+      const totalTables = countResult.recordset[0]?.cnt || 0;
+      
+      if (totalTables > 100) {
+        console.warn(
+          `[get_db_schema] Database has ${totalTables} tables. For better performance, consider using tableFilter parameter to fetch specific tables. Alternatively, use get_table_names for lightweight discovery.`
+        );
+      }
+    }
+
     // ── 1. Fetch columns + constraint info ────────────────────────────────
     const columnQuery = `
       SELECT

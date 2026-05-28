@@ -51,11 +51,19 @@ The user will provide one of:
 If a file path is given, read the file content from the workspace.
 If a stored procedure name is given, call `run_sql` with dryRun=true to fetch the proc definition from sys.sql_modules.
 
-### Step 2 – Auto-Discover Full Schema Context
-**Call `get_db_schema` with NO filter** to fetch the entire database schema.
-- Do NOT ask the user which tables to include — auto-discover all of them
-- From the full schema, identify tables referenced in the SQL code under review
-- Detect missing indexes, dangling FK references, or column type mismatches against the live schema
+### Step 2 – Auto-Discover Schema Context (Optimized for Large Databases)
+**For large databases (>100 tables), use two-phase discovery to reduce token usage:**
+
+**Phase 1 – Lightweight Table Discovery:**
+- Call `get_table_names` to fetch table names and row counts only
+- From the SQL code under review, extract referenced table names (SELECT, INSERT, UPDATE, DELETE, JOIN statements)
+- Collect all referenced tables; if >20 tables, prioritize those most frequently referenced
+
+**Phase 2 – Full Schema Fetch:**
+- Call `get_db_schema` with `tables` parameter set to the referenced/filtered list from Phase 1
+- If `get_table_names` is unavailable or DB is small (<50 tables), call `get_db_schema` with NO filter directly
+
+**Then identify issues:** detect missing indexes, dangling FK references, or column type mismatches against the filtered schema
 
 ### Step 3 – Perform the Code Review
 Analyze the code across these dimensions:
